@@ -1,0 +1,27 @@
+{
+  "name": "conversion-api",
+  "version": "1.0.0",
+  "description": "Ringba to BIGO conversion postback API for pay-per-call campaigns",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "ringba",
+    "bigo",
+    "conversion",
+    "postback",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.11.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
