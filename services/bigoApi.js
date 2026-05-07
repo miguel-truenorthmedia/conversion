@@ -14,9 +14,9 @@ const DEFAULT_PAYOUT = Number(process.env.DEFAULT_PAYOUT || 35);
 const BIGO_VALUE = Number(process.env.BIGO_VALUE || DEFAULT_PAYOUT);
 const BIGO_TIMEOUT_MS = Number(process.env.BIGO_TIMEOUT_MS || 10000);
 
-function buildCustomPayload({ bigoClickId, eventTimeSeconds, conversionValue }) {
+function buildCustomPayload({ bigoClickId, eventTimeSeconds, conversionValue, pixelId }) {
   return {
-    pixel_id: String(BIGO_PIXEL_ID),
+    pixel_id: String(pixelId),
     event: BIGO_EVENT_NAME,
     event_time: eventTimeSeconds,
     user_data: {
@@ -29,10 +29,10 @@ function buildCustomPayload({ bigoClickId, eventTimeSeconds, conversionValue }) 
   };
 }
 
-function buildWebEventsPayload({ bigoClickId, conversionValue }) {
+function buildWebEventsPayload({ bigoClickId, conversionValue, pixelId }) {
   return {
     bbg: bigoClickId,
-    pixel_id: String(BIGO_PIXEL_ID),
+    pixel_id: String(pixelId),
     timestamp_ms: Date.now(),
     event: {
       event_id: BIGO_EVENT_ID,
@@ -42,17 +42,32 @@ function buildWebEventsPayload({ bigoClickId, conversionValue }) {
   };
 }
 
-async function sendBigoConversion({ bigoClickId, eventTimeSeconds, conversionValue = BIGO_VALUE }) {
+async function sendBigoConversion({
+  bigoClickId,
+  eventTimeSeconds,
+  conversionValue = BIGO_VALUE,
+  pixelIdOverride,
+}) {
   try {
+    const resolvedPixelId = String(pixelIdOverride || BIGO_PIXEL_ID);
     let url = BIGO_CUSTOM_URL;
     let headers = {
       "Content-Type": "application/json",
     };
-    let payload = buildCustomPayload({ bigoClickId, eventTimeSeconds, conversionValue });
+    let payload = buildCustomPayload({
+      bigoClickId,
+      eventTimeSeconds,
+      conversionValue,
+      pixelId: resolvedPixelId,
+    });
 
     if (BIGO_API_MODE === "web_events") {
       url = BIGO_WEB_EVENTS_URL;
-      payload = buildWebEventsPayload({ bigoClickId, conversionValue });
+      payload = buildWebEventsPayload({
+        bigoClickId,
+        conversionValue,
+        pixelId: resolvedPixelId,
+      });
       headers = {
         "Content-Type": "application/json",
       };

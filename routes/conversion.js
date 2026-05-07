@@ -4,6 +4,7 @@ const { logError, logInfo, logWarn } = require("../utils/logger");
 
 const router = express.Router();
 const FALLBACK_DEFAULT_PAYOUT = 35;
+const SECONDARY_BIGO_PIXEL_ID = process.env.SECONDARY_BIGO_PIXEL_ID || "906565217281285376";
 
 function parsePositiveNumber(value) {
   const parsed = Number(value);
@@ -28,12 +29,16 @@ function resolveConversionValue(payload) {
   return { value: defaultPayoutValue, source: "default_payout" };
 }
 
-router.post("/", async (req, res) => {
+async function handleConversion(req, res, options = {}) {
+  const endpoint = options.endpoint || "primary";
+  const pixelIdOverride = options.pixelIdOverride;
   const payload = req.body || {};
   const bigoClickId = payload.bigo_clickid;
   const conversion = resolveConversionValue(payload);
 
   logInfo("WEBHOOK_RECEIVED", {
+    endpoint,
+    pixel_id: pixelIdOverride || process.env.BIGO_PIXEL_ID || null,
     bigo_clickid: bigoClickId || null,
     qualified: payload.qualified || null,
     duration: payload.duration ?? null,
@@ -60,10 +65,13 @@ router.post("/", async (req, res) => {
     bigoClickId,
     eventTimeSeconds: Math.floor(Date.now() / 1000),
     conversionValue: conversion.value,
+    pixelIdOverride,
   });
 
   if (result.ok) {
     logInfo("BIGO_FORWARD_SUCCESS", {
+      endpoint,
+      pixel_id: pixelIdOverride || process.env.BIGO_PIXEL_ID || null,
       status: result.status,
       response: result.data,
       bigo_clickid: bigoClickId,
@@ -72,6 +80,8 @@ router.post("/", async (req, res) => {
     });
   } else {
     logError("BIGO_FORWARD_FAILURE", {
+      endpoint,
+      pixel_id: pixelIdOverride || process.env.BIGO_PIXEL_ID || null,
       status: result.status,
       error: result.error,
       response: result.data,
@@ -85,7 +95,17 @@ router.post("/", async (req, res) => {
     accepted: result.ok,
     forwarded: result.ok,
     reason: result.ok ? null : "bigo_api_error",
+    endpoint,
   });
-});
+}
+
+router.post("/", async (req, res) => handleConversion(req, res, { endpoint: "primary" }));
+
+router.post("/secondary", async (req, res) =>
+  handleConversion(req, res, {
+    endpoint: "secondary",
+    pixelIdOverride: SECONDARY_BIGO_PIXEL_ID,
+  })
+);
 
 module.exports = router;

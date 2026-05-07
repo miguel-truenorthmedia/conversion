@@ -4,7 +4,9 @@ Node.js Express API for forwarding qualified Ringba calls to BIGO as conversion 
 
 ## What this service does
 
-1. Receives Ringba webhooks at `/api/conversion`
+1. Receives Ringba webhooks at:
+   - `/api/conversion` (primary pixel)
+   - `/api/conversion/secondary` (secondary pixel)
 2. Validates:
    - `bigo_clickid` exists
 3. Forwards valid calls to BIGO Event API
@@ -50,8 +52,7 @@ npm install
 cp .env.example .env
 ```
 
-3. Update `.env` values (especially `BIGO_PIXEL_ID`, `RINGBA_WEBHOOK_SECRET`, and mode settings).
-3. Update `.env` values (especially `BIGO_PIXEL_ID` and mode settings).
+3. Update `.env` values (especially `BIGO_PIXEL_ID`, `SECONDARY_BIGO_PIXEL_ID`, and mode settings).
 
 4. Run locally:
 
@@ -72,6 +73,7 @@ npm run dev
 - `BIGO_API_MODE`: `custom` or `web_events`
 - `BIGO_ACCESS_TOKEN`: Only required for `custom` mode (ignored in `web_events`)
 - `BIGO_PIXEL_ID`: BIGO pixel ID
+- `SECONDARY_BIGO_PIXEL_ID`: Secondary pixel ID used by `/api/conversion/secondary`
 - `DEFAULT_PAYOUT`: Default conversion payout/value fallback (default: `35`)
 - `BIGO_CUSTOM_URL`: Custom mode endpoint
 - `BIGO_EVENT_NAME`: Custom mode event name (default: `OnlineConsultation`)
@@ -102,6 +104,12 @@ Example response:
 
 Always returns HTTP `200`.
 
+### Secondary conversion webhook
+
+`POST /api/conversion/secondary`
+
+Same behavior as primary endpoint, but forwards using `SECONDARY_BIGO_PIXEL_ID`.
+
 ## Local testing with curl
 
 ### 1) Valid conversion (should forward to BIGO)
@@ -120,6 +128,16 @@ curl -X POST http://localhost:3000/api/conversion \
 curl -X POST http://localhost:3000/api/conversion \
   -H "Content-Type: application/json" \
   -d '{}'
+```
+
+### 3) Secondary pixel endpoint test
+
+```bash
+curl -X POST http://localhost:3000/api/conversion/secondary \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bigo_clickid": "EihBMzQyVALID_CLICK_ID_EXAMPLE"
+  }'
 ```
 
 ## Logging behavior
