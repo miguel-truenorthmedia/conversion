@@ -8,10 +8,9 @@ const BIGO_WEB_EVENTS_URL =
 const BIGO_ACCESS_TOKEN = process.env.BIGO_ACCESS_TOKEN || "";
 const BIGO_PIXEL_ID = String(process.env.BIGO_PIXEL_ID || "906523332026341632");
 const BIGO_EVENT_NAME = process.env.BIGO_EVENT_NAME || "OnlineConsultation";
-const BIGO_EVENT_ID = process.env.BIGO_EVENT_ID || "consult";
+/** Primary POST /api/conversion web_events: fixed online-consultation mapping (not env-driven). */
+const PRIMARY_WEB_EVENTS_EVENT_ID = "consult";
 const BIGO_CURRENCY = process.env.BIGO_CURRENCY || "USD";
-const DEFAULT_PAYOUT = Number(process.env.DEFAULT_PAYOUT || 35);
-const BIGO_VALUE = Number(process.env.BIGO_VALUE || DEFAULT_PAYOUT);
 const BIGO_TIMEOUT_MS = Number(process.env.BIGO_TIMEOUT_MS || 10000);
 
 function buildCustomPayload({ bigoClickId, eventTimeSeconds, conversionValue, pixelId }) {
@@ -35,7 +34,7 @@ function buildWebEventsPayload({ bigoClickId, conversionValue, pixelId }) {
     pixel_id: String(pixelId),
     timestamp_ms: Date.now(),
     event: {
-      event_id: BIGO_EVENT_ID,
+      event_id: PRIMARY_WEB_EVENTS_EVENT_ID,
       currency: BIGO_CURRENCY,
       monetary: String(conversionValue),
     },
@@ -45,7 +44,7 @@ function buildWebEventsPayload({ bigoClickId, conversionValue, pixelId }) {
 async function sendBigoConversion({
   bigoClickId,
   eventTimeSeconds,
-  conversionValue = BIGO_VALUE,
+  conversionValue = 0,
   pixelIdOverride,
 }) {
   try {
@@ -110,6 +109,68 @@ async function sendBigoConversion({
   }
 }
 
+/**
+ * BIGO Web Events API — GET variant (Pay Per Call raw / billable postbacks).
+ * Query: bbg, pixel_id, event_id, timestamp_ms, value, currency
+ */
+async function sendBigoWebEventsGet({
+  bigoClickId,
+  pixelId,
+  eventId,
+  value,
+  currency = BIGO_CURRENCY,
+}) {
+  if ((process.env.BIGO_API_MODE || "custom").toLowerCase() !== "web_events") {
+    return {
+      ok: false,
+      status: 400,
+      data: null,
+      error: "web_events_mode_required_for_get_tracking",
+    };
+  }
+
+  try {
+    const resolvedPixelId = String(pixelId || BIGO_PIXEL_ID);
+    const timestampMs = Date.now();
+    const numericValue = Number(value);
+    const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
+
+    const params = {
+      bbg: String(bigoClickId),
+      pixel_id: resolvedPixelId,
+      event_id: String(eventId),
+      timestamp_ms: timestampMs,
+      value: safeValue,
+      currency: String(currency || "USD"),
+    };
+
+    const response = await axios.get(BIGO_WEB_EVENTS_URL, {
+      params,
+      timeout: BIGO_TIMEOUT_MS,
+      validateStatus: () => true,
+    });
+
+    const isSuccess =
+      response.status >= 200 && response.status < 300 && Number(response.data?.code) === 1;
+
+    return {
+      ok: isSuccess,
+      status: response.status,
+      data: response.data,
+      error: isSuccess ? null : "upstream_rejected",
+      request_url: response.config?.url || BIGO_WEB_EVENTS_URL,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      status: error.response?.status || 500,
+      data: error.response?.data || null,
+      error: error.message || "unknown_error",
+    };
+  }
+}
+
 module.exports = {
   sendBigoConversion,
+  sendBigoWebEventsGet,
 };
