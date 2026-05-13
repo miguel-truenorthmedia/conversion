@@ -117,7 +117,7 @@ Same behavior as primary endpoint, but forwards using `SECONDARY_BIGO_PIXEL_ID`.
 `POST /api/conversion/raw`
 
 - **Ringba**: fire when any call connects to a buyer.
-- **BIGO** (`BIGO_API_MODE=web_events`): **GET** `https://api.bytegle.site/bigoad/trackingevent` with query params: `bbg`, `pixel_id` (= `BIGO_PIXEL_ID`), `event_id=form_button`, `timestamp_ms`, `value` (= numeric `payout` from body, or **0**), `currency=USD`.
+- **BIGO** (`BIGO_API_MODE=web_events`): **GET** `https://api.bytegle.site/bigoad/trackingevent` with query params: `bbg`, `pixel_id` (= `BIGO_PIXEL_ID`), `event_id=form_button`, `timestamp_ms`, `monetary` (= numeric `payout` from body, or **0**), `currency=USD`.
 - Body example:
 
 ```json
@@ -314,4 +314,4 @@ pm2 startup
 - Use `BIGO_API_MODE=web_events` to send to BIGO documented Web Events API format.
 - In `web_events` mode, the service does not send an `Authorization` header and does not require `BIGO_ACCESS_TOKEN`.
 - **Primary** `POST /api/conversion` uses fixed **`consult`** for Web Events POST JSON (not configurable via env). **`/raw`** and **`/billable`** use **`form_button`** and **`phone_consult`** respectively (path-based).
-- **Raw / billable** endpoints use **GET** to `BIGO_WEB_EVENTS_URL` with flat query parameters (`bbg`, `pixel_id`, `event_id`, `timestamp_ms`, `value`, `currency`). **All monetary values** come from the Ringba JSON field **`payout`** (or **0** if missing/invalid); there are **no** `DEFAULT_PAYOUT` / `BIGO_VALUE` env fallbacks.
+- **Raw / billable** endpoints use **GET** to `BIGO_WEB_EVENTS_URL` with flat query parameters (`bbg`, `pixel_id`, `event_id`, `timestamp_ms`, `monetary`, `currency`). **All monetary values** come from the Ringba JSON field **`payout`** (or **0** if missing/invalid); there are **no** `DEFAULT_PAYOUT` / `BIGO_VALUE` env fallbacks.

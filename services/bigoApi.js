@@ -111,7 +111,7 @@ async function sendBigoConversion({
 
 /**
  * BIGO Web Events API — GET variant (Pay Per Call raw / billable postbacks).
- * Query: bbg, pixel_id, event_id, timestamp_ms, value, currency
+ * Query: bbg, pixel_id, event_id, timestamp_ms, monetary, currency
  */
 async function sendBigoWebEventsGet({
   bigoClickId,
@@ -140,7 +140,7 @@ async function sendBigoWebEventsGet({
       pixel_id: resolvedPixelId,
       event_id: String(eventId),
       timestamp_ms: timestampMs,
-      value: safeValue,
+      monetary: safeValue,
       currency: String(currency || "USD"),
     };
 
