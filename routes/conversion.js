@@ -6,6 +6,7 @@ const { logError, logInfo, logWarn } = require("../utils/logger");
 const router = express.Router();
 const SECONDARY_BIGO_PIXEL_ID = process.env.SECONDARY_BIGO_PIXEL_ID || "906565217281285376";
 const PRIMARY_PIXEL_ID = String(process.env.BIGO_PIXEL_ID || "906523332026341632");
+const FM_PIXEL_ID = String(process.env.FM_BIGO_PIXEL_ID || "906715074029752576");
 
 function safeString(v) {
   if (v === undefined || v === null) return null;
@@ -22,16 +23,29 @@ function resolvePayoutFromPayload(payload) {
   return n;
 }
 
+/** Ringba `mb` (lowercase): jml → primary pixel, fm → FM pixel; missing/unknown → defaultPixelId. */
+function resolvePixelIdFromPayload(payload, defaultPixelId = PRIMARY_PIXEL_ID) {
+  const mbRaw = safeString(payload?.mb);
+  if (!mbRaw) return defaultPixelId;
+
+  const mb = mbRaw.toLowerCase();
+  if (mb === "jml") return PRIMARY_PIXEL_ID;
+  if (mb === "fm") return FM_PIXEL_ID;
+  return defaultPixelId;
+}
+
 async function handleConversion(req, res, options = {}) {
   const endpoint = options.endpoint || "primary";
   const pixelIdOverride = options.pixelIdOverride;
   const payload = req.body || {};
   const bigoClickId = payload.bigo_clickid;
   const payoutValue = resolvePayoutFromPayload(payload);
+  const pixelId = pixelIdOverride ?? resolvePixelIdFromPayload(payload);
 
   logInfo("WEBHOOK_RECEIVED", {
     endpoint,
-    pixel_id: pixelIdOverride || process.env.BIGO_PIXEL_ID || null,
+    mb: payload.mb ?? null,
+    pixel_id: pixelId,
     bigo_clickid: bigoClickId || null,
     qualified: payload.qualified || null,
     duration: payload.duration ?? null,
@@ -57,13 +71,13 @@ async function handleConversion(req, res, options = {}) {
     bigoClickId,
     eventTimeSeconds: Math.floor(Date.now() / 1000),
     conversionValue: payoutValue,
-    pixelIdOverride,
+    pixelIdOverride: pixelId,
   });
 
   if (result.ok) {
     logInfo("BIGO_FORWARD_SUCCESS", {
       endpoint,
-      pixel_id: pixelIdOverride || process.env.BIGO_PIXEL_ID || null,
+      pixel_id: pixelId,
       status: result.status,
       response: result.data,
       bigo_clickid: bigoClickId,
@@ -72,7 +86,7 @@ async function handleConversion(req, res, options = {}) {
   } else {
     logError("BIGO_FORWARD_FAILURE", {
       endpoint,
-      pixel_id: pixelIdOverride || process.env.BIGO_PIXEL_ID || null,
+      pixel_id: pixelId,
       status: result.status,
       error: result.error,
       response: result.data,
@@ -106,9 +120,12 @@ router.post("/raw", ringbaSignatureOptional, async (req, res) => {
   const duration = payload.duration ?? null;
   const buyer = safeString(payload.buyer);
   const payoutValue = resolvePayoutFromPayload(payload);
+  const pixelId = resolvePixelIdFromPayload(payload);
 
   logInfo("WEBHOOK_RECEIVED", {
     endpoint: "/api/conversion/raw",
+    mb: payload.mb ?? null,
+    pixel_id: pixelId,
     bigo_clickid: bigoClickId,
     caller_id: callerId,
     duration,
@@ -124,7 +141,7 @@ router.post("/raw", ringbaSignatureOptional, async (req, res) => {
 
   const result = await sendBigoWebEventsGet({
     bigoClickId,
-    pixelId: PRIMARY_PIXEL_ID,
+    pixelId,
     eventId: "form_button",
     value: payoutValue,
   });
@@ -132,6 +149,7 @@ router.post("/raw", ringbaSignatureOptional, async (req, res) => {
   if (result.ok) {
     logInfo("BIGO_FORWARD_SUCCESS", {
       endpoint: "/api/conversion/raw",
+      pixel_id: pixelId,
       bigo_clickid: bigoClickId,
       duration,
       buyer,
@@ -143,6 +161,7 @@ router.post("/raw", ringbaSignatureOptional, async (req, res) => {
   } else {
     logError("BIGO_FORWARD_FAILURE", {
       endpoint: "/api/conversion/raw",
+      pixel_id: pixelId,
       bigo_clickid: bigoClickId,
       duration,
       buyer,
@@ -171,9 +190,12 @@ router.post("/billable", ringbaSignatureOptional, async (req, res) => {
   const buyer = safeString(payload.buyer);
   const payoutRaw = payload.payout;
   const payoutValue = resolvePayoutFromPayload(payload);
+  const pixelId = resolvePixelIdFromPayload(payload);
 
   logInfo("WEBHOOK_RECEIVED", {
     endpoint: "/api/conversion/billable",
+    mb: payload.mb ?? null,
+    pixel_id: pixelId,
     bigo_clickid: bigoClickId,
     caller_id: callerId,
     duration,
@@ -189,7 +211,7 @@ router.post("/billable", ringbaSignatureOptional, async (req, res) => {
 
   const result = await sendBigoWebEventsGet({
     bigoClickId,
-    pixelId: PRIMARY_PIXEL_ID,
+    pixelId,
     eventId: "phone_consult",
     value: payoutValue,
   });
@@ -197,6 +219,7 @@ router.post("/billable", ringbaSignatureOptional, async (req, res) => {
   if (result.ok) {
     logInfo("BIGO_FORWARD_SUCCESS", {
       endpoint: "/api/conversion/billable",
+      pixel_id: pixelId,
       bigo_clickid: bigoClickId,
       duration,
       buyer,
@@ -208,6 +231,7 @@ router.post("/billable", ringbaSignatureOptional, async (req, res) => {
   } else {
     logError("BIGO_FORWARD_FAILURE", {
       endpoint: "/api/conversion/billable",
+      pixel_id: pixelId,
       bigo_clickid: bigoClickId,
       duration,
       buyer,
