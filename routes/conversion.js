@@ -8,6 +8,7 @@ const SECONDARY_BIGO_PIXEL_ID = process.env.SECONDARY_BIGO_PIXEL_ID || "90656521
 const PRIMARY_PIXEL_ID = String(process.env.BIGO_PIXEL_ID || "906523332026341632");
 const FM_PIXEL_ID = String(process.env.FM_BIGO_PIXEL_ID || "906715074029752576");
 const FM_MEDI_1_PIXEL_ID = String(process.env.FM_MEDI_1_BIGO_PIXEL_ID || "906938932614207232");
+const FM_FE_2_PIXEL_ID = String(process.env.FM_FE_2_BIGO_PIXEL_ID || "906973327786908928");
 
 function safeString(v) {
   if (v === undefined || v === null) return null;
@@ -24,7 +25,7 @@ function resolvePayoutFromPayload(payload) {
   return n;
 }
 
-/** Ringba `mb` (lowercase): jml → primary, fm → FM, fm-medi-1 → FM Medi 1; missing/unknown → defaultPixelId. */
+/** Ringba `mb` (lowercase): jml → primary, fm → FM, fm-medi-1 → FM Medi 1, fm-fe-2 → FM FE 2; missing/unknown → defaultPixelId. */
 function resolvePixelIdFromPayload(payload, defaultPixelId = PRIMARY_PIXEL_ID) {
   const mbRaw = safeString(payload?.mb);
   if (!mbRaw) return defaultPixelId;
@@ -33,6 +34,7 @@ function resolvePixelIdFromPayload(payload, defaultPixelId = PRIMARY_PIXEL_ID) {
   if (mb === "jml") return PRIMARY_PIXEL_ID;
   if (mb === "fm") return FM_PIXEL_ID;
   if (mb === "fm-medi-1") return FM_MEDI_1_PIXEL_ID;
+  if (mb === "fm-fe-2") return FM_FE_2_PIXEL_ID;
   return defaultPixelId;
 }
 
